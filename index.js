@@ -1,19 +1,15 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 
-// 設定情報
-const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SCAN_COUNT_PER_RUN = 30; // 1回の実行でスキャンするスタジオの数（GitHub Actionsのタイムアウト防止）
+const PROJECT_ID = '1439348321';
+const SCAN_COUNT_PER_RUN = 50; 
 
-// スキャン開始ID（最新のスタジオID付近を指定。前回の続きから再開する仕組みも搭載）
 const DEFAULT_START_ID = 35369190; 
 const STATE_FILE = 'last_studio_id.txt';
 
-// クッキー情報
 const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
 const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'j7I1nnsY5NpK745qxpSIal9Ki6M082h9').trim();
 
-// 前回スキャンしたIDを読み込む（なければデフォルト値を使用）
 function getStartId() {
     if (fs.existsSync(STATE_FILE)) {
         const saved = parseInt(fs.readFileSync(STATE_FILE, 'utf8').trim(), 10);
@@ -22,7 +18,6 @@ function getStartId() {
     return DEFAULT_START_ID;
 }
 
-// 次にスキャンするIDを保存する
 function saveNextId(nextId) {
     fs.writeFileSync(STATE_FILE, String(nextId), 'utf8');
 }
@@ -68,7 +63,6 @@ async function main() {
             console.log(`\n[${i + 1}/${SCAN_COUNT_PER_RUN}] スタジオID: ${currentId} を確認中...`);
             const response = await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
 
-            // 404（存在しない・削除されたスタジオ）の場合は即スキップ
             if (response && response.status() === 404) {
                 console.log(` => [スキップ] 存在しないスタジオです (404)`);
                 continue;
@@ -76,7 +70,6 @@ async function main() {
 
             await page.waitForTimeout(1500);
 
-            // 「Add Projects」の入力欄があるかチェック（＝誰でも追加できる権限があるか）
             const inputField = await page.$('input[placeholder*="scratch.mit.edu/projects"]');
 
             if (inputField) {
@@ -97,11 +90,9 @@ async function main() {
             console.log(` => [エラー] ID ${currentId} の確認中にエラー: ${err.message}`);
         }
 
-        // サーバー負荷軽減のためのウェイト
         await page.waitForTimeout(1500);
     }
 
-    // 次回の実行のために次のIDを保存
     saveNextId(currentId + 1);
 
     await browser.close();
