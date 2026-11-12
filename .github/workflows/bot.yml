@@ -1,0 +1,28 @@
+name: Scratch Auto Studio Bot
+
+on:
+  schedule:
+    # 注意: GitHubでは 2分おき (*/2) は機能しません（最短でも 5分おき `*/5` ですが、これも非推奨・遅延します）
+    - cron: '*/5 * * * *' 
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Bot
+        env:
+          SCRATCH_SESSION_ID: ${{ secrets.SCRATCH_SESSION_ID }}
+          SCRATCH_CSRF_TOKEN: ${{ secrets.SCRATCH_CSRF_TOKEN }}
+        run: node index.js
