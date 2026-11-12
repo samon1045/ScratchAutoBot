@@ -2,15 +2,15 @@ name: Scratch Auto Studio Bot
 
 on:
   schedule:
-    # 注意: GitHubでは 2分おき (*/2) は機能しません（最短でも 5分おき `*/5` ですが、これも非推奨・遅延します）
-    - cron: '*/5 * * * *' 
-  workflow_dispatch:
+    # 注意: GitHub Actionsのcronは最短でも5分おき（正確には保証されず遅延します）
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # 手動でも実行できるようにする
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -20,6 +20,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Run Bot
         env:
