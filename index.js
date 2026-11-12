@@ -3,7 +3,7 @@ import fs from 'fs';
 
 // 設定情報
 const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SCAN_COUNT_PER_RUN = 15; // 1回の実行でスキャンするスタジオの数（GitHub Actionsのタイムアウト防止）
+const SCAN_COUNT_PER_RUN = 30; // 1回の実行でスキャンするスタジオの数（GitHub Actionsのタイムアウト防止）
 
 // スキャン開始ID（最新のスタジオID付近を指定。前回の続きから再開する仕組みも搭載）
 const DEFAULT_START_ID = 35369190; 
