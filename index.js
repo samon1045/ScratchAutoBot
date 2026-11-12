@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
 // 設定情報
-const PROJECT_ID = '1439335319/';
+const PROJECT_ID = '1439348321/';
 const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch', 'なんでも', 'public', 'プロキシ', 'スタジオ']; // 検索キーワード
 const SESSIONID = process.env.SCRATCH_SESSION_ID; // GitHub Secrets等から読み込むクッキー
 const CSRF_TOKEN = process.env.SCRATCH_CSRF_TOKEN;
