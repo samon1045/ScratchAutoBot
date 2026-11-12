@@ -1,16 +1,17 @@
 import { chromium } from 'playwright';
+import fs from 'fs';
 
 // 設定情報
 const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch']; // 検索キーワード
+const SEARCH_KEYWORDS = ['アニメ']; // まずはテスト用に「アニメ」だけに絞るなど調整可能
 
-// クッキー情報（GitHub Secretsや環境変数、または直接記述）
+// クッキー情報
 const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
 const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'j7I1nnsY5NpK745qxpSIal9Ki6M082h9').trim();
 
 async function searchStudios(keyword) {
     try {
-        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=5`;
+        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=3`; // テスト用に件数を少なめに
         const res = await fetch(url);
         return await res.json();
     } catch (e) {
@@ -20,13 +21,11 @@ async function searchStudios(keyword) {
 }
 
 async function main() {
-    console.log("=== Playwright ボット実行開始 ===");
+    console.log("=== Playwright ボット実行開始 (スクリーンショット有効) ===");
 
-    // ヘッドレスモードでブラウザを起動
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
 
-    // Scratchのドメインに対してログイン用クッキーをセット
     await context.addCookies([
         {
             name: 'scratchsessionsid',
@@ -59,33 +58,33 @@ async function main() {
             try {
                 console.log(`スタジオアクセス中: ID ${studioId}`);
                 await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(2000); // 描画待ち
 
-                // 「プロジェクトを追加」ボタンを探してクリック（UIのセレクタは状況に応じて調整）
-                // スタジオページ内の追加ボタンをクリックする処理
-                const addBtn = await page.$('button.add-projects-button, .studio-compose-projects button, button:has-text("プロジェクトを追加")');
+                // スクリーンショットを保存 (GitHub Actionsの成果物やローカルで確認用)
+                const ssPath = `screenshot_${studioId}.png`;
+                await page.screenshot({ path: ssPath, fullPage: true });
+                console.log(`[保存] スクリーンショットを保存しました: ${ssPath}`);
+
+                // 「プロジェクトを追加」ボタンを探す（ScratchのUI構造に合わせて複数候補を指定）
+                // スタジオ画面下の「Add projects」ボタンなど
+                const addBtn = await page.$('button.add-projects-button, .studio-compose-projects button, button:has-text("Add Projects"), button:has-text("プロジェクトを追加")');
                 
                 if (addBtn) {
+                    console.log(`[発見] スタジオ ID: ${studioId} の追加ボタンを押します`);
                     await addBtn.click();
-                    await page.waitForTimeout(1000);
+                    await page.waitForTimeout(1500);
 
-                    // 自分のプロジェクト一覧から該当IDのものを選択して追加する処理
-                    // （モーダルが表示される想定）
-                    const projectCheckbox = await page.$(`input[value="${PROJECT_ID}"], [data-project-id="${PROJECT_ID}"]`);
-                    if (projectCheckbox) {
-                        await projectCheckbox.click();
-                        console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
-                    } else {
-                        console.log(`[スキップ] スタジオ ID: ${studioId} (プロジェクトが見つからないか、既に追加済みです)`);
-                    }
+                    // 追加モーダル内の自分のプロジェクトを探す処理など
+                    // （まずはボタンが押せるかどうかの検証から）
+                    console.log(`[成功] スタジオ ID: ${studioId} の追加ボタン操作完了`);
                 } else {
-                    console.log(`[スキップ] スタジオ ID: ${studioId} (追加権限がない、またはボタンが見つかりません)`);
+                    console.log(`[スキップ] スタジオ ID: ${studioId} (追加ボタンが見つかりません。権限がない、またはUIが異なります)`);
                 }
             } catch (err) {
                 console.log(`[エラー] スタジオ ID ${studioId} の処理失敗:`, err.message);
             }
 
-            // サーバーやScratch側に負荷をかけないための待機
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(2000);
         }
     }
 
