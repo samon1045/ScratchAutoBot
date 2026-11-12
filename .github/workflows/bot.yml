@@ -2,9 +2,11 @@ name: Scratch Auto Studio Bot
 
 on:
   schedule:
-    # 注意: GitHub Actionsのcronは最短でも5分おき（正確には保証されず遅延します）
     - cron: '*/5 * * * *'
-  workflow_dispatch: # 手動でも実行できるようにする
+  workflow_dispatch: # 手動実行用
+
+permissions:
+  contents: write # 👈 リポジトリへの書き込み権限を明示的に付与
 
 jobs:
   run-bot:
@@ -12,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true # 👈 プッシュ権限を維持する
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -31,7 +35,7 @@ jobs:
         run: node index.js
 
       - name: Upload Screenshots
-        if: always() # 成功しても失敗してもアップロードする
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-screenshots
