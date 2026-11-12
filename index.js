@@ -3,8 +3,10 @@ import fetch from 'node-fetch';
 // 設定情報
 const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
 const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch']; // 検索キーワード
-const SESSIONID = process.env.SCRATCH_SESSION_ID || 'ここに直接セッションIDを入れることも可能'; 
-const CSRF_TOKEN = process.env.SCRATCH_CSRF_TOKEN || 'ここに直接CSRFトークンを入れることも可能';
+
+// 改行や余分なスペースが入らないよう .trim() を適用しています
+const SESSIONID = (process.env.SCRATCH_SESSION_ID || '.eJxVj8tOwzAQRf_F6zbEk4ed7soKVWoXBSRgE43tSWOS2FXiEh7i33GkCqm70T0zR3N_2GWi0eFAbMMev1RvP_A5JpytWI2X0NYLr62JmItK5qIsFqbQOYphg_1EKxZoCtr7zi6a2Y9dZDcChbojt1iWjFywGoP1LrmCKTnSub-G99fl6PVxiEdpISWlWQYF8FxUojKmkUVudMMh5UpsLno47ObjJ76IEvZPbzlkD-s9VMNujpren6xb23M0VTyBVCRc5EkWyaRHDLql8b-KeUd38nWwA317t_TZDjTGz-4ONNevsdttsxanNi5BKRWAMpgDSUMFNFIomWldImXEUTRpAxyQ_f4BABh3_w:1xRSyf:zvQMZKVni0BrFvIQsWlJKrNQWis').trim(); 
+const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'RgiKmSYgMnTy2iLhK7ggwEZ3UNtPW4zn').trim();
 
 async function searchStudios(keyword) {
     try {
