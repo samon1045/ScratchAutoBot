@@ -1,69 +1,80 @@
-import fetch from 'node-fetch';
-
-// 設定情報
-const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch']; // 検索キーワード
-
-// 改行や余分なスペースが入らないよう .trim() を適用しています
-const SESSIONID = (process.env.SCRATCH_SESSION_ID || '.eJxVj8tOwzAQRf_F6zbEk4ed7soKVWoXBSRgE43tSWOS2FXiEh7i33GkCqm70T0zR3N_2GWi0eFAbMMev1RvP_A5JpytWI2X0NYLr62JmItK5qIsFqbQOYphg_1EKxZoCtr7zi6a2Y9dZDcChbojt1iWjFywGoP1LrmCKTnSub-G99fl6PVxiEdpISWlWQYF8FxUojKmkUVudMMh5UpsLno47ObjJ76IEvZPbzlkD-s9VMNujpren6xb23M0VTyBVCRc5EkWyaRHDLql8b-KeUd38nWwA317t_TZDjTGz-4ONNevsdttsxanNi5BKRWAMpgDSUMFNFIomWldImXEUTRpAxyQ_f4BABh3_w:1xRSyf:zvQMZKVni0BrFvIQsWlJKrNQWis').trim(); 
-const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'RgiKmSYgMnTy2iLhK7ggwEZ3UNtPW4zn').trim();
-
-async function searchStudios(keyword) {
-    try {
-        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=10`;
-        const res = await fetch(url);
-        const data = await res.json();
-        return data; 
-    } catch (e) {
-        console.error("検索エラー:", e);
-        return [];
+[
+    {
+        "domain": "scratch.mit.edu",
+        "expirationDate": 1826019376,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "permissions",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "%7B%7D"
+    },
+    {
+        "domain": ".mit.edu",
+        "expirationDate": 1829043934.610467,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "_ga_3FZMRJWZR6",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "GS2.1.s1794482621$o1$g1$t1794483934$j24$l0$h0"
+    },
+    {
+        "domain": ".mit.edu",
+        "expirationDate": 1829043934.606742,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "_ga",
+        "path": "/",
+        "sameSite": null,
+        "secure": false,
+        "session": false,
+        "storeId": null,
+        "value": "GA1.1.11575785.1794482622"
+    },
+    {
+        "domain": "scratch.mit.edu",
+        "expirationDate": 1826019007.319519,
+        "hostOnly": true,
+        "httpOnly": false,
+        "name": "donate_banner_ab",
+        "path": "/",
+        "sameSite": "lax",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "A"
+    },
+    {
+        "domain": ".scratch.mit.edu",
+        "expirationDate": 1825933533.649589,
+        "hostOnly": false,
+        "httpOnly": false,
+        "name": "scratchcsrftoken",
+        "path": "/",
+        "sameSite": null,
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "j7I1nnsY5NpK745qxpSIal9Ki6M082h9"
+    },
+    {
+        "domain": ".scratch.mit.edu",
+        "expirationDate": 1795693533.649495,
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "scratchsessionsid",
+        "path": "/",
+        "sameSite": null,
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "\".eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20\""
     }
-}
-
-async function addProjectToStudio(studioId) {
-    try {
-        const url = `https://api.scratch.mit.edu/studios/${studioId}/projects/${PROJECT_ID}`;
-        
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Cookie': `scratchsessionsid=${SESSIONID};`,
-                'X-CSRF-Token': CSRF_TOKEN,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Referer': `https://scratch.mit.edu/studios/${studioId}/`,
-                'Origin': 'https://scratch.mit.edu',
-                'Content-Type': 'application/json'
-            }
-        });
-
-        if (res.ok) {
-            console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
-        } else {
-            const errText = await res.text();
-            console.log(`[スキップ/失敗] スタジオ ID: ${studioId} (ステータス: ${res.status} - ${errText})`);
-        }
-    } catch (e) {
-        console.error(`[エラー] スタジオ ID ${studioId} への追加失敗:`, e.message);
-    }
-}
-
-async function main() {
-    console.log("=== ボット実行開始 ===");
-    
-    for (const keyword of SEARCH_KEYWORDS) {
-        console.log(`「${keyword}」でスタジオを検索中...`);
-        const studios = await searchStudios(keyword);
-        
-        for (const studio of studios) {
-            const studioId = studio.id;
-            await addProjectToStudio(studioId);
-            
-            // サーバーに負荷をかけないためのウェイト (3秒待機)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-    }
-    
-    console.log("=== 処理完了 ===");
-}
-
-main();
+]
