@@ -1,18 +1,17 @@
 import fetch from 'node-fetch';
 
 // 設定情報
-const PROJECT_ID = '1439348321/';
-const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch', 'なんでも', 'public', 'プロキシ', 'スタジオ']; // 検索キーワード
-const SESSIONID = process.env.SCRATCH_SESSION_ID; // GitHub Secrets等から読み込むクッキー
-const CSRF_TOKEN = process.env.SCRATCH_CSRF_TOKEN;
+const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
+const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch']; // 検索キーワード
+const SESSIONID = process.env.SCRATCH_SESSION_ID || 'ここに直接セッションIDを入れることも可能'; 
+const CSRF_TOKEN = process.env.SCRATCH_CSRF_TOKEN || 'ここに直接CSRFトークンを入れることも可能';
 
 async function searchStudios(keyword) {
     try {
-        // Scratchのスタジオ検索API（公開されているエンドポイントの例）
         const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=10`;
         const res = await fetch(url);
         const data = await res.json();
-        return data; // スタジオのリストが返る
+        return data; 
     } catch (e) {
         console.error("検索エラー:", e);
         return [];
@@ -26,10 +25,12 @@ async function addProjectToStudio(studioId) {
         const res = await fetch(url, {
             method: 'POST',
             headers: {
-                'Cookie': `sessionid=${SESSIONID};`,
+                'Cookie': `scratchsessionsid=${SESSIONID};`,
                 'X-CSRF-Token': CSRF_TOKEN,
                 'X-Requested-With': 'XMLHttpRequest',
-                'Referer': 'https://scratch.mit.edu/'
+                'Referer': `https://scratch.mit.edu/studios/${studioId}/`,
+                'Origin': 'https://scratch.mit.edu',
+                'Content-Type': 'application/json'
             }
         });
 
@@ -37,7 +38,7 @@ async function addProjectToStudio(studioId) {
             console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
         } else {
             const errText = await res.text();
-            console.log(`[スキップ/失敗] スタジオ ID: ${studioId} (理由: ${res.status} - ${errText})`);
+            console.log(`[スキップ/失敗] スタジオ ID: ${studioId} (ステータス: ${res.status} - ${errText})`);
         }
     } catch (e) {
         console.error(`[エラー] スタジオ ID ${studioId} への追加失敗:`, e.message);
@@ -53,10 +54,9 @@ async function main() {
         
         for (const studio of studios) {
             const studioId = studio.id;
-            // 参加可能か、マネージャー制限がないかなどの条件をここに挟む
             await addProjectToStudio(studioId);
             
-            // サーバーに負荷をかけないよう、リクエスト間にウェイトを入れる
+            // サーバーに負荷をかけないためのウェイト (3秒待機)
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
     }
