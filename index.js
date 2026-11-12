@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 
 // 設定情報
 const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SEARCH_KEYWORDS = ['アニメ']; // 必要に応じてキーワードを追加
+const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch', 'なんでも', 'プロキシ', 'public', 'Japanese', '日本', 'エロ', 'A', 'b', 'c', 'd']; // 必要に応じてキーワードを追加
 
 // クッキー情報
 const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
