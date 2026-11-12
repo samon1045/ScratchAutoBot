@@ -1,26 +1,44 @@
 import { chromium } from 'playwright';
+import fetch from 'node-fetch';
 
 // 設定情報
 const PROJECT_ID = '1439348321'; // あなたのプロジェクトID
-const SEARCH_KEYWORDS = ['アニメ', '共有', 'game', 'scratch', 'なんでも', 'プロキシ', 'public', 'Japanese', '日本', 'エロ', 'A', 'b', 'c', 'd']; // 必要に応じてキーワードを追加
+const USERNAME = 'SyllivaUser1'; // あなたのScratchユーザー名（クッキーから推測）
 
 // クッキー情報
 const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
 const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'j7I1nnsY5NpK745qxpSIal9Ki6M082h9').trim();
 
-async function searchStudios(keyword) {
+// 自分がキュレーター・マネージャーとして参加しているスタジオ一覧を取得
+async function getCuratingStudios() {
     try {
-        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=3`;
+        console.log(`ユーザー "${USERNAME}" の参加スタジオを取得中...`);
+        const url = `https://api.scratch.mit.edu/users/${USERNAME}/studios/curating?limit=40`;
         const res = await fetch(url);
-        return await res.json();
+        const studios = await res.json();
+        
+        if (Array.isArray(studios)) {
+            return studios;
+        } else {
+            console.log("スタジオの取得に失敗しました:", studios);
+            return [];
+        }
     } catch (e) {
-        console.error("検索エラー:", e);
+        console.error("参加スタジオ取得エラー:", e);
         return [];
     }
 }
 
 async function main() {
-    console.log("=== Playwright ボット実行開始 (URL直接入力版) ===");
+    console.log("=== 参加スタジオ自動追加ボット実行開始 ===");
+
+    const studios = await getCuratingStudios();
+    console.log(`対象スタジオ数: ${studios.length}件\n`);
+
+    if (studios.length === 0) {
+        console.log("処理を終了します（対象スタジオがありません）");
+        return;
+    }
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
@@ -46,56 +64,48 @@ async function main() {
 
     const page = await context.newPage();
 
-    for (const keyword of SEARCH_KEYWORDS) {
-        console.log(`\n「${keyword}」でスタジオを検索中...`);
-        const studios = await searchStudios(keyword);
+    for (const studio of studios) {
+        const studioId = studio.id;
+        const studioTitle = studio.title || 'タイトル不明';
+        const studioUrl = `https://scratch.mit.edu/studios/${studioId}/`;
 
-        for (const studio of studios) {
-            const studioId = studio.id;
-            const studioUrl = `https://scratch.mit.edu/studios/${studioId}/`;
-
-            try {
-                console.log(`スタジオアクセス中: ID ${studioId}`);
-                await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await page.waitForTimeout(2000); // 描画待ち
-
-                // スクリーンショット保存
-                const ssPath = `screenshot_${studioId}.png`;
-                await page.screenshot({ path: ssPath, fullPage: true });
-                console.log(`[保存] スクリーンショットを保存しました: ${ssPath}`);
-
-                // プロジェクトのURL
-                const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
-
-                // 1. 「Add Projects」の入力欄を探してURLを入力
-                const inputField = await page.$('input[placeholder*="scratch.mit.edu/projects"]');
-                
-                if (inputField) {
-                    await inputField.fill(projectUrl);
-                    await page.waitForTimeout(1000);
-
-                    // 2. 「Add by URL」ボタンをクリック
-                    const addByUrlBtn = await page.$('button:has-text("Add by URL")');
-                    if (addByUrlBtn) {
-                        await addByUrlBtn.click();
-                        await page.waitForTimeout(3000); // 追加処理の完了待ち
-                        console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
-                    } else {
-                        console.log(`[スキップ] スタジオ ID: ${studioId} ("Add by URL" ボタンが見つかりません)`);
-                    }
-                } else {
-                    console.log(`[スキップ] スタジオ ID: ${studioId} (プロジェクト追加用の入力欄が見つかりません。権限がない可能性があります)`);
-                }
-            } catch (err) {
-                console.log(`[エラー] スタジオ ID ${studioId} の処理失敗:`, err.message);
-            }
-
+        try {
+            console.log(`[処理中] スタジオ: "${studioTitle}" (ID: ${studioId})`);
+            await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
             await page.waitForTimeout(2000);
+
+            // プロジェクトのURL
+            const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
+
+            // 「Add Projects」の入力欄を探してURLを入力
+            const inputField = await page.$('input[placeholder*="scratch.mit.edu/projects"]');
+            
+            if (inputField) {
+                await inputField.fill(projectUrl);
+                await page.waitForTimeout(1000);
+
+                // 「Add by URL」ボタンをクリック
+                const addByUrlBtn = await page.$('button:has-text("Add by URL")');
+                if (addByUrlBtn) {
+                    await addByUrlBtn.click();
+                    await page.waitForTimeout(3000); // 追加完了待ち
+                    console.log(` => [成功] プロジェクトを追加しました！`);
+                } else {
+                    console.log(` => [スキップ] "Add by URL" ボタンが見つかりませんでした。`);
+                }
+            } else {
+                console.log(` => [スキップ] 入力欄が見つかりませんでした（権限がない可能性）`);
+            }
+        } catch (err) {
+            console.log(` => [エラー] 処理失敗:`, err.message);
         }
+
+        // サーバー負荷軽減のウェイト
+        await page.waitForTimeout(2000);
     }
 
     await browser.close();
-    console.log("\n=== 処理完了 ===");
+    console.log("\n=== 全ての処理が完了しました ===");
 }
 
 main();
