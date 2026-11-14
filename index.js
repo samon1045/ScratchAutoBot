@@ -19,9 +19,8 @@ async function searchStudios(keyword) {
 }
 
 async function main() {
-    console.log("=== Playwright ボット実行開始 (ボット検知対策版) ===");
+    console.log("=== Playwright ボット実行開始 (詳細スクショ・デバッグ版) ===");
 
-    // ボット検知を回避するための起動オプション
     const browser = await chromium.launch({
         headless: true,
         args: [
@@ -69,43 +68,56 @@ async function main() {
             const studioUrl = `https://scratch.mit.edu/studios/${studioId}/`;
 
             try {
-                console.log(`スタジオアクセス中: ID ${studioId} (${studio.title || 'タイトルなし'})`);
+                console.log(`\n--- スタジオアクセス中: ID ${studioId} (${studio.title || 'タイトルなし'}) ---`);
+                
+                // 1. ページ遷移直後
                 await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-                await page.waitForTimeout(3000); // 描画をしっかり待つ
+                await page.screenshot({ path: `debug_1_loaded_${studioId}.png`, fullPage: true });
+                console.log(`[スクショ保存] 1. ページ読み込み直後`);
 
-                // デバッグ用にスクリーンショット保存
-                const ssPath = `screenshot_${studioId}.png`;
-                await page.screenshot({ path: ssPath, fullPage: true });
+                // 2. 描画待ち後（2秒経過）
+                await page.waitForTimeout(2000);
+                await page.screenshot({ path: `debug_2_wait_${studioId}.png`, fullPage: true });
+                console.log(`[スクショ保存] 2. 描画待ち後`);
 
                 const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
 
-                // 入力欄が出現するまで最大5秒待つ
+                // 3. 入力欄を探す試行前
                 let inputField = null;
                 try {
                     inputField = await page.waitForSelector('input[placeholder*="scratch.mit.edu/projects"]', { timeout: 5000 });
                 } catch (e) {
-                    // 見つからない場合はnullのまま
+                    // 見つからない
                 }
-                
+
                 if (inputField) {
+                    console.log(`[検出] プロジェクト追加用の入力欄が見つかりました！`);
+                    await page.screenshot({ path: `debug_3_input_found_${studioId}.png`, fullPage: true });
+
                     await inputField.fill(projectUrl);
                     await page.waitForTimeout(1000);
+                    await page.screenshot({ path: `debug_4_filled_${studioId}.png`, fullPage: true });
 
-                    // 「Add by URL」ボタンを探してクリック
                     const addByUrlBtn = await page.$('button:has-text("Add by URL")');
                     if (addByUrlBtn) {
                         await addByUrlBtn.click();
-                        await page.waitForTimeout(3000); // 追加処理待ち
+                        await page.waitForTimeout(3000);
+                        await page.screenshot({ path: `debug_5_success_${studioId}.png`, fullPage: true });
                         console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
                         totalAdded++;
                     } else {
                         console.log(`[スキップ] スタジオ ID: ${studioId} ("Add by URL" ボタンが見つかりません)`);
+                        await page.screenshot({ path: `debug_err_nobtn_${studioId}.png`, fullPage: true });
                     }
                 } else {
-                    console.log(`[スキップ] スタジオ ID: ${studioId} (プロジェクト追加用の入力欄が見つかりません。権限がないか、ボット判定されている可能性があります)`);
+                    console.log(`[スキップ] スタジオ ID: ${studioId} (入力欄が見つかりません)`);
+                    // 入力欄が見つからなかった瞬間の画面を詳細に保存
+                    await page.screenshot({ path: `debug_err_noinput_${studioId}.png`, fullPage: true });
                 }
+
             } catch (err) {
                 console.log(`[エラー] スタジオ ID ${studioId} の処理失敗:`, err.message);
+                await page.screenshot({ path: `debug_err_exception_${studioId}.png`, fullPage: true });
             }
 
             await page.waitForTimeout(2000);
