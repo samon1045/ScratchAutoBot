@@ -1,32 +1,24 @@
 import { chromium } from 'playwright';
-import fs from 'fs';
 
-const PROJECT_ID = '1439348005';
-const SCAN_COUNT_PER_RUN = 50; 
-
-const DEFAULT_START_ID = 35369190; 
-const STATE_FILE = 'last_studio_id.txt';
+const PROJECT_ID = '1439348005'; 
+const SEARCH_KEYWORDS = ['なんでも']; 
 
 const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
 const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'j7I1nnsY5NpK745qxpSIal9Ki6M082h9').trim();
 
-function getStartId() {
-    if (fs.existsSync(STATE_FILE)) {
-        const saved = parseInt(fs.readFileSync(STATE_FILE, 'utf8').trim(), 10);
-        if (!isNaN(saved)) return saved;
+async function searchStudios(keyword) {
+    try {
+        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=3`;
+        const res = await fetch(url);
+        return await res.json();
+    } catch (e) {
+        console.error("検索エラー:", e);
+        return [];
     }
-    return DEFAULT_START_ID;
-}
-
-function saveNextId(nextId) {
-    fs.writeFileSync(STATE_FILE, String(nextId), 'utf8');
 }
 
 async function main() {
-    console.log("=== スタジオID連番スキャンボット 実行開始 ===");
-
-    const startId = getStartId();
-    console.log(`スキャン開始ID: ${startId} 〜 ${startId + SCAN_COUNT_PER_RUN - 1}`);
+    console.log("=== Playwright ボット実行開始 (URL直接入力版) ===");
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
@@ -51,52 +43,57 @@ async function main() {
     ]);
 
     const page = await context.newPage();
-    const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
 
-    let currentId = startId;
+    for (const keyword of SEARCH_KEYWORDS) {
+        console.log(`\n「${keyword}」でスタジオを検索中...`);
+        const studios = await searchStudios(keyword);
 
-    for (let i = 0; i < SCAN_COUNT_PER_RUN; i++) {
-        currentId = startId + i;
-        const studioUrl = `https://scratch.mit.edu/studios/${currentId}/`;
+        for (const studio of studios) {
+            const studioId = studio.id;
+            const studioUrl = `https://scratch.mit.edu/studios/${studioId}/`;
 
-        try {
-            console.log(`\n[${i + 1}/${SCAN_COUNT_PER_RUN}] スタジオID: ${currentId} を確認中...`);
-            const response = await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
+            try {
+                console.log(`スタジオアクセス中: ID ${studioId}`);
+                await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(2000); // 描画待ち
 
-            if (response && response.status() === 404) {
-                console.log(` => [スキップ] 存在しないスタジオです (404)`);
-                continue;
-            }
+                // スクリーンショット保存
+                const ssPath = `screenshot_${studioId}.png`;
+                await page.screenshot({ path: ssPath, fullPage: true });
+                console.log(`[保存] スクリーンショットを保存しました: ${ssPath}`);
 
-            await page.waitForTimeout(1500);
+                // プロジェクトのURL
+                const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
 
-            const inputField = await page.$('input[placeholder*="scratch.mit.edu/projects"]');
+                // 1. 「Add Projects」の入力欄を探してURLを入力
+                const inputField = await page.$('input[placeholder*="scratch.mit.edu/projects"]');
+                
+                if (inputField) {
+                    await inputField.fill(projectUrl);
+                    await page.waitForTimeout(1000);
 
-            if (inputField) {
-                console.log(` => [発見！] 追加可能なオープンスタジオです！`);
-                await inputField.fill(projectUrl);
-                await page.waitForTimeout(800);
-
-                const addByUrlBtn = await page.$('button:has-text("Add by URL")');
-                if (addByUrlBtn) {
-                    await addByUrlBtn.click();
-                    await page.waitForTimeout(2500); // 追加完了待ち
-                    console.log(` => [成功] スタジオ ID: ${currentId} にプロジェクトを追加しました！`);
+                    // 2. 「Add by URL」ボタンをクリック
+                    const addByUrlBtn = await page.$('button:has-text("Add by URL")');
+                    if (addByUrlBtn) {
+                        await addByUrlBtn.click();
+                        await page.waitForTimeout(3000); // 追加処理の完了待ち
+                        console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
+                    } else {
+                        console.log(`[スキップ] スタジオ ID: ${studioId} ("Add by URL" ボタンが見つかりません)`);
+                    }
+                } else {
+                    console.log(`[スキップ] スタジオ ID: ${studioId} (プロジェクト追加用の入力欄が見つかりません。権限がない可能性があります)`);
                 }
-            } else {
-                console.log(` => [スキップ] 追加権限がありません（マネージャー限定など）`);
+            } catch (err) {
+                console.log(`[エラー] スタジオ ID ${studioId} の処理失敗:`, err.message);
             }
-        } catch (err) {
-            console.log(` => [エラー] ID ${currentId} の確認中にエラー: ${err.message}`);
-        }
 
-        await page.waitForTimeout(1500);
+            await page.waitForTimeout(2000);
+        }
     }
 
-    saveNextId(currentId + 1);
-
     await browser.close();
-    console.log(`\n=== 処理完了 (次回開始ID: ${currentId + 1}) ===`);
+    console.log("\n=== 処理完了 ===");
 }
 
 main();
