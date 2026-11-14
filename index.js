@@ -2,13 +2,14 @@ import { chromium } from 'playwright';
 
 const PROJECT_ID = '1439348005'; 
 const SEARCH_KEYWORDS = ['なんでも', 'anything', 'Japanese', '日本'];
+const LIMIT_PER_KEYWORD = 20; // 1キーワードあたりの取得件数を増やす (例: 20件)
 
-const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aaXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
+const SESSION_ID = (process.env.SCRATCH_SESSION_ID || '.eJxVj81OwzAQBt_F5zbEmx87vcEJVSqHUiTEJVrbm8YksavYpRTEu-NIFRI3a2Y90vfNzoFmhxOxDXu-qtF-4EsinK1Yi-fYt4tvrUmai0aWoq4Wp9A5SrDDMdCKRQpRez_YJXPx85Dcv4BCPZBbKgsjF63GaL3LbiJkezqNN_hwO05dnx7pU15JSXlRQAW8FI1ojOlkVRrdcci5Epuznp62l_0nvooadoe3EorH9Q6aeXtJmdEfrVvbUyo1PINcZFyUWZFM0DNG3dP8N8W8ozv6NtqJvrxb9twHi3cHP1z9_009hj5pqKUCUAZLIGmogk4KJQuta6SCOIou74ADsp9fGEJ1sw:1xRTFF:GAAAhTQTeJERiQWmUrcJY5JWj20').trim();
 const CSRF_TOKEN = (process.env.SCRATCH_CSRF_TOKEN || 'j7I1nnsY5NpK745qxpSIal9Ki6M082h9').trim();
 
 async function searchStudios(keyword) {
     try {
-        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=3`;
+        const url = `https://api.scratch.mit.edu/search/studios?q=${encodeURIComponent(keyword)}&limit=${LIMIT_PER_KEYWORD}`;
         const res = await fetch(url);
         return await res.json();
     } catch (e) {
@@ -43,24 +44,25 @@ async function main() {
     ]);
 
     const page = await context.newPage();
+    let totalAdded = 0;
 
     for (const keyword of SEARCH_KEYWORDS) {
-        console.log(`\n「${keyword}」でスタジオを検索中...`);
+        console.log(`\n「${keyword}`でスタジオを検索中...);
         const studios = await searchStudios(keyword);
+        console.log(`「${keyword}」の検索結果: ${studios.length}件のスタジオが見つかりました`);
 
         for (const studio of studios) {
             const studioId = studio.id;
             const studioUrl = `https://scratch.mit.edu/studios/${studioId}/`;
 
             try {
-                console.log(`スタジオアクセス中: ID ${studioId}`);
+                console.log(`スタジオアクセス中: ID ${studioId} (${studio.title || 'タイトルなし'})`);
                 await page.goto(studioUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
                 await page.waitForTimeout(2000); // 描画待ち
 
                 // スクリーンショット保存
                 const ssPath = `screenshot_${studioId}.png`;
                 await page.screenshot({ path: ssPath, fullPage: true });
-                console.log(`[保存] スクリーンショットを保存しました: ${ssPath}`);
 
                 // プロジェクトのURL
                 const projectUrl = `https://scratch.mit.edu/projects/${PROJECT_ID}`;
@@ -78,6 +80,7 @@ async function main() {
                         await addByUrlBtn.click();
                         await page.waitForTimeout(3000); // 追加処理の完了待ち
                         console.log(`[成功] スタジオ ID: ${studioId} にプロジェクトを追加しました！`);
+                        totalAdded++;
                     } else {
                         console.log(`[スキップ] スタジオ ID: ${studioId} ("Add by URL" ボタンが見つかりません)`);
                     }
@@ -93,7 +96,7 @@ async function main() {
     }
 
     await browser.close();
-    console.log("\n=== 処理完了 ===");
+    console.log(`\n=== 処理完了 (合計 ${totalAdded} 個のスタジオに追加しました) ===`);
 }
 
 main();
